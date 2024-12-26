@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiter with Token Bucket</title>
+</head>
+<body>
+    <h1>Rate Limiting using Token Bucket</h1>
+    <button onclick="makeRequest()">Send Request</button>
+    <p id="response"></p>
+    <p id="rate-limit-info"></p>
+
+    <script>
+        
+        const failedRequestsQueue = [];
+
+        
+        async function retryFailedRequests() {
+            if (failedRequestsQueue.length > 0) {
+                const request = failedRequestsQueue.shift(); 
+
+                try {
+                    const response = await fetch('http://localhost:4000/hello');
+                    const message = await response.text();
+                    const rateLimit = response.headers.get('X-RateLimit-Limit');
+                    const remainingTokens = response.headers.get('X-RateLimit-Remaining');
+
+                    document.getElementById('response').innerText = message;
+                    document.getElementById('rate-limit-info').innerText = `Rate Limit: ${rateLimit}, Remaining Tokens: ${remainingTokens}`;
+
+                   
+                    request.resolve();
+                } catch (error) {
+                    
+                    console.log('Retry failed, adding back to the queue:', error);
+                    failedRequestsQueue.push(request);
+                }
+            }
+        }
+
+        
+        async function makeRequest() {
+            try {
+                const response = await fetch('http://localhost:4000/hello');
+
+               
+                const message = await response.text();
+                const rateLimit = response.headers.get('X-RateLimit-Limit');
+                const remainingTokens = response.headers.get('X-RateLimit-Remaining');
+                const resetTime = response.headers.get('X-RateLimit-Reset');
+
+               
+                document.getElementById('response').innerText = message;
+                document.getElementById('rate-limit-info').innerText = `Rate Limit: ${rateLimit}, Remaining Tokens: ${remainingTokens}`;
+
+                
+                if (response.status === 429) {
+                    const timeUntilNextToken = parseInt(resetTime, 10) * 1000 - Date.now(); // Time until retry in ms
+
+                    document.getElementById('response').innerText = `Rate limit exceeded. Retrying in ${Math.ceil(timeUntilNextToken / 1000)} seconds...`;
+
+                    
+                    const failedRequest = new Promise((resolve, reject) => {
+                        failedRequestsQueue.push({ resolve, reject });
+                    });
+
+                    
+                    setTimeout(retryFailedRequests, timeUntilNextToken);
+                }
+            } catch (error) {
+                console.error('Error making request:', error);
+            }
+        }
+    </script>
+</body>
+</html>

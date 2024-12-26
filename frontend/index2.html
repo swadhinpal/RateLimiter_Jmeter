@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiter with Token Bucket</title>
+</head>
+<body>
+    <h1>Rate Limiting using token bucket</h1>
+    <button onclick="makeRequest()">Send Request</button>
+    <p id="response"></p>
+    <p id="rate-limit-info"></p> 
+
+    <script>
+        async function makeRequest() {
+            try {
+                const response = await fetch('http://localhost:4000/hello');
+
+                // Get response text (message) and headers (rate limit info)
+                const message = await response.text();
+                const rateLimit = response.headers.get('X-RateLimit-Limit');
+                const remainingTokens = response.headers.get('X-RateLimit-Remaining');
+
+                // Display message and rate limit data
+                document.getElementById('response').innerText = message;
+                document.getElementById('rate-limit-info').innerText = `Rate Limit: ${rateLimit}, Remaining Tokens: ${remainingTokens}`;
+
+            } catch (error) {
+                console.error('Error making request:', error);
+            }
+        }
+    </script>
+</body>
+</html>
